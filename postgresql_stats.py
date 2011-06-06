@@ -46,18 +46,17 @@ def retrieve_metrics(database, user, host, password):
 
   stats = dict()
 
-  cur.execute("SELECT datname, count(1) FROM pg_stat_activity GROUP BY datname");
+  cur.execute("SELECT count(1) FROM pg_stat_activity WHERE datname='%s'" % (database,));
   for row in cur:
-     stats['conns_' + row[0]] = ('int', row[1])
+     stats['conns'] = ('int', row[0])
 
-  cur.execute("SELECT datname, count(1) FROM pg_stat_activity WHERE current_query != '<IDLE>'"
-              " GROUP BY datname")
+  cur.execute("SELECT count(1) FROM pg_stat_activity WHERE current_query != '<IDLE>' and datname='%s'" % (database,))
   for row in cur:
-     stats['active_queries_' + row[0]] = ('int', row[1])
+     stats['active_queries'] = ('int', row[0])
 
-  cur.execute("SELECT datname, count(1) FROM pg_stat_activity WHERE waiting=true GROUP BY datname")
+  cur.execute("SELECT count(1) FROM pg_stat_activity WHERE waiting=true and datname='%s'" % (database,))
   for row in cur:
-     stats['waiting_queries_' + row[0]] = ('int', row[1])
+     stats['waiting_queries'] = ('int', row[0])
 
   cur.execute("SELECT checkpoints_timed, checkpoints_req, buffers_alloc FROM pg_stat_bgwriter")
   row = cur.fetchone()
@@ -67,17 +66,16 @@ def retrieve_metrics(database, user, host, password):
 
   int_cols = "xact_commit", "xact_rollback", "blks_read", "tup_fetched","tup_inserted", "tup_updated", \
              "tup_deleted"
-  cur.execute("SELECT datname, " + ', ' . join(int_cols) + ", (blks_read - blks_hit) / (blks_read+0.000001)"
-              " AS blk_miss_pct FROM pg_stat_database")
+  cur.execute("SELECT " + ', ' . join(int_cols) + ", (blks_read - blks_hit) / (blks_read+0.000001)"
+              " AS blk_miss_pct FROM pg_stat_database WHERE datname='%s'" % (database,))
 
   for row in cur:
-     datname = row[0]
-     colno = 1
+     colno = 0
      for key in int_cols:
-       stats[datname + '_' + key] = ('gauge', row[colno])
+       stats[key] = ('gauge', row[colno])
        colno += 1
      if 0 <= row[colno] <= 1:
-       stats[datname + '_blk_miss_pct'] = ('float', row[colno])
+       stats['blk_miss_pct'] = ('float', row[colno])
 
   cur.close()
   conn.close()
