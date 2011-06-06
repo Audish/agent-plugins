@@ -2,29 +2,28 @@
 #
 # Cloudkick plugin for monitoring PostgreSQL server status.
 #
-# Author: Steve Hoffmann
+# Author: Yaniv Aknin, largely based on Steve Hoffmann's version
 #
 # Requirements:
 # - Python PostgreSQL adapter (http://initd.org/psycopg/)
 #
-# Plugin arguments:
-# 1. database name (default = postgres)
-# 2. user (default = postgres)
-# 3. hostname (default = localhost)
-# 4. password (default = None)
-#
-
-DEFAULT_DATABASE = 'postgres'
-DEFAULT_USER = 'postgres'
-DEFAULT_HOST = 'localhost'
-DEFAULT_PASSWORD = None
 
 import sys
-import commands
 import warnings
 import psycopg2
+import argparse
 
 warnings.filterwarnings('ignore', category = DeprecationWarning)
+
+def main(argv):
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-u', '--user', default='postgres')
+    parser.add_argument('-H', '--host')
+    parser.add_argument('-p', '--password')
+    parser.add_argument('db')
+    options = parser.parse_args(argv[1:])
+    metrics = retrieve_metrics(options.db, options.user, options.host, options.password)
+    print_metrics(metrics)
 
 def open_db(database, user, host = None, password = None):
   dsn = "dbname=%s user=%s" % (database, user)
@@ -90,30 +89,6 @@ def print_metrics(metrics):
   for (key, stat) in metrics.iteritems():
      print "metric %s %s %s" % (key, stat[0], stat[1])
 
-def main():
-  arg_len = len(sys.argv)
 
-  if arg_len >= 2:
-    database = sys.argv[1]
-  else:
-    database = DEFAULT_DATABASE
-
-  if arg_len >= 3:
-    user = sys.argv[2]
-  else:
-    user = DEFAULT_USER
-
-  if arg_len >= 4:
-    host = sys.argv[3]
-  else:
-    host = DEFAULT_HOST
-
-  if arg_len >= 5:
-    password = sys.argv[4]
-  else:
-    password = DEFAULT_PASSWORD
-
-  metrics = retrieve_metrics(database, user, host, password)
-  print_metrics(metrics)
-
-main()
+if __name__ == '__main__':
+    main(sys.argv)
